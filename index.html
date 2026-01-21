@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตารางออมเงิน 365 วัน</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .dashboard {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+            text-align: center;
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .stat-box strong {
+            display: block;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        .progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 25px;
+            height: 20px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 10px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .day-box {
+            background: var(--card-bg);
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            position: relative;
+        }
+
+        .day-box:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .day-box.checked {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .day-box .day-number {
+            font-size: 0.8rem;
+            color: #888;
+            position: absolute;
+            top: 2px;
+            left: 5px;
+        }
+        
+        .day-box.checked .day-number {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .day-box .amount {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-top: 5px;
+        }
+
+        .reset-btn {
+            margin-top: 30px;
+            padding: 10px 20px;
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .reset-btn:hover {
+            background-color: #e64a19;
+        }
+
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <h1>💰 ตารางออมเงิน 365 วัน</h1>
+    
+    <div class="dashboard">
+        <div class="stats">
+            <div class="stat-box">
+                เก็บได้แล้ว
+                <strong id="total-saved">0</strong>
+                บาท
+            </div>
+            <div class="stat-box">
+                เป้าหมาย
+                <strong>66,795</strong>
+                บาท
+            </div>
+        </div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <p id="progress-text" style="margin-top: 10px; font-size: 0.9rem;">0% สำเร็จ</p>
+    </div>
+
+    <div class="grid-container" id="grid">
+        </div>
+
+    <button class="reset-btn" onclick="resetData()">รีเซ็ตข้อมูลใหม่ทั้งหมด</button>
+
+    <script>
+        const totalDays = 365;
+        const gridContainer = document.getElementById('grid');
+        const totalSavedEl = document.getElementById('total-saved');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        
+        // โหลดข้อมูลเก่าจาก LocalStorage หรือสร้างอาเรย์ว่างถ้าไม่มี
+        let savedDays = JSON.parse(localStorage.getItem('savedDays365')) || [];
+
+        function initGrid() {
+            gridContainer.innerHTML = '';
+            let currentTotal = 0;
+
+            for (let i = 1; i <= totalDays; i++) {
+                const box = document.createElement('div');
+                box.classList.add('day-box');
+                
+                // เช็คว่าวันนี้ถูกเลือกไปหรือยัง
+                if (savedDays.includes(i)) {
+                    box.classList.add('checked');
+                    currentTotal += i;
+                }
+
+                box.innerHTML = `
+                    <span class="day-number">วันที่ ${i}</span>
+                    <div class="amount">${i} ฿</div>
+                `;
+
+                // เพิ่ม Event Listener เมื่อคลิก
+                box.addEventListener('click', () => toggleDay(i, box));
+                gridContainer.appendChild(box);
+            }
+            
+            updateDashboard(currentTotal);
+        }
+
+        function toggleDay(day, element) {
+            if (savedDays.includes(day)) {
+                // เอาออก
+                savedDays = savedDays.filter(d => d !== day);
+                element.classList.remove('checked');
+            } else {
+                // เพิ่มเข้า
+                savedDays.push(day);
+                element.classList.add('checked');
+            }
+
+            // บันทึกลงเครื่อง
+            localStorage.setItem('savedDays365', JSON.stringify(savedDays));
+            
+            // คำนวณยอดรวมใหม่
+            const newTotal = savedDays.reduce((a, b) => a + b, 0);
+            updateDashboard(newTotal);
+        }
+
+        function updateDashboard(total) {
+            // เป้าหมายรวมคือ 66,795 (สูตร n*(n+1)/2)
+            const target = 66795;
+            const percentage = (total / target) * 100;
+
+            totalSavedEl.innerText = total.toLocaleString();
+            progressBar.style.width = percentage + '%';
+            progressText.innerText = `${percentage.toFixed(2)}% สำเร็จ (เหลืออีก ${(target - total).toLocaleString()} บาท)`;
+        }
+
+        function resetData() {
+            if(confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลการออมทั้งหมด?')) {
+                localStorage.removeItem('savedDays365');
+                savedDays = [];
+                initGrid();
+            }
+        }
+
+        // เริ่มทำงาน
+        initGrid();
+    </script>
+
+</body>
+</html>
