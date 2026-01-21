@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ตารางออมเงิน 365 วัน</title>
+    <title>ตารางออมเงิน 365 วัน (สะสมซ้ำได้)</title>
     <style>
         :root {
             --primary-color: #4CAF50;
+            --secondary-color: #2E7D32;
             --bg-color: #f4f7f6;
             --card-bg: #ffffff;
             --text-color: #333;
+            --danger-color: #e53935;
         }
 
         body {
@@ -25,8 +27,15 @@
 
         h1 {
             color: var(--primary-color);
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
         }
 
         .dashboard {
@@ -47,12 +56,12 @@
             display: flex;
             justify-content: space-around;
             margin-bottom: 15px;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
         }
 
         .stat-box strong {
             display: block;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             color: var(--primary-color);
         }
 
@@ -69,11 +78,13 @@
             width: 0%;
             background-color: var(--primary-color);
             transition: width 0.3s ease;
+            background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);
+            background-size: 1rem 1rem;
         }
 
         .grid-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
             gap: 10px;
             width: 100%;
             max-width: 800px;
@@ -83,47 +94,98 @@
             background: var(--card-bg);
             border: 2px solid #ddd;
             border-radius: 8px;
-            padding: 10px;
+            padding: 10px 5px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.1s;
             user-select: none;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 50px;
         }
 
-        .day-box:hover {
-            border-color: var(--primary-color);
-            transform: translateY(-2px);
+        .day-box:active {
+            transform: scale(0.95);
         }
 
-        .day-box.checked {
-            background-color: var(--primary-color);
-            color: white;
+        /* เมื่อมีการเลือก (มากกว่า 0 ครั้ง) */
+        .day-box.active {
+            background-color: #e8f5e9;
             border-color: var(--primary-color);
         }
 
         .day-box .day-number {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: #888;
-            position: absolute;
-            top: 2px;
-            left: 5px;
+            margin-bottom: 2px;
         }
         
-        .day-box.checked .day-number {
-            color: rgba(255,255,255,0.8);
-        }
-
         .day-box .amount {
             font-weight: bold;
             font-size: 1.1rem;
-            margin-top: 5px;
+            color: var(--text-color);
+        }
+
+        /* ป้ายบอกจำนวนครั้งที่กด */
+        .counter-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.2s;
+        }
+
+        .day-box.active .counter-badge {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* ปุ่มลบจำนวน */
+        .minus-btn {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            background-color: var(--danger-color);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            line-height: 0;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+
+        .day-box.active .minus-btn {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .reset-btn {
             margin-top: 30px;
             padding: 10px 20px;
-            background-color: #ff5722;
+            background-color: #607d8b;
             color: white;
             border: none;
             border-radius: 5px;
@@ -131,7 +193,7 @@
         }
         
         .reset-btn:hover {
-            background-color: #e64a19;
+            background-color: #455a64;
         }
 
     </style>
@@ -140,6 +202,7 @@
 <body>
 
     <h1>💰 ตารางออมเงิน 365 วัน</h1>
+    <div class="subtitle">คลิกที่กล่องเพื่อเพิ่มเงิน (กดซ้ำได้) | กดปุ่มลบสีแดงเพื่อลด</div>
     
     <div class="dashboard">
         <div class="stats">
@@ -149,7 +212,7 @@
                 บาท
             </div>
             <div class="stat-box">
-                เป้าหมาย
+                เป้าหมาย (1 รอบ)
                 <strong>66,795</strong>
                 บาท
             </div>
@@ -172,69 +235,114 @@
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
         
-        // โหลดข้อมูลเก่าจาก LocalStorage หรือสร้างอาเรย์ว่างถ้าไม่มี
-        let savedDays = JSON.parse(localStorage.getItem('savedDays365')) || [];
+        // ใช้ Object แทน Array เพื่อเก็บจำนวนครั้ง { "1": 2, "50": 1 } หมายถึง วันที่ 1 เก็บ 2 รอบ
+        let savedData = JSON.parse(localStorage.getItem('savedDataMulti')) || {};
 
         function initGrid() {
             gridContainer.innerHTML = '';
-            let currentTotal = 0;
-
+            
             for (let i = 1; i <= totalDays; i++) {
-                const box = document.createElement('div');
-                box.classList.add('day-box');
+                const count = savedData[i] || 0;
                 
-                // เช็คว่าวันนี้ถูกเลือกไปหรือยัง
-                if (savedDays.includes(i)) {
-                    box.classList.add('checked');
-                    currentTotal += i;
-                }
-
+                const box = document.createElement('div');
+                box.className = `day-box ${count > 0 ? 'active' : ''}`;
+                box.id = `day-${i}`;
+                
+                // สร้าง HTML ภายในกล่อง
                 box.innerHTML = `
+                    <div class="counter-badge" id="badge-${i}">x${count}</div>
                     <span class="day-number">วันที่ ${i}</span>
-                    <div class="amount">${i} ฿</div>
+                    <div class="amount">${i}</div>
+                    <div class="minus-btn" onclick="decreaseDay(${i}, event)">-</div>
                 `;
 
-                // เพิ่ม Event Listener เมื่อคลิก
-                box.addEventListener('click', () => toggleDay(i, box));
+                // คลิกที่กล่องเพื่อเพิ่ม
+                box.onclick = (e) => {
+                    // ป้องกันไม่ให้ทำงานถ้ากดโดนปุ่มลบ
+                    if(e.target.classList.contains('minus-btn')) return;
+                    increaseDay(i);
+                };
+
                 gridContainer.appendChild(box);
             }
-            
-            updateDashboard(currentTotal);
+            calculateTotal();
         }
 
-        function toggleDay(day, element) {
-            if (savedDays.includes(day)) {
-                // เอาออก
-                savedDays = savedDays.filter(d => d !== day);
-                element.classList.remove('checked');
+        function increaseDay(day) {
+            if (!savedData[day]) savedData[day] = 0;
+            savedData[day]++;
+            
+            updateBoxVisual(day);
+            saveAndCalculate();
+        }
+
+        function decreaseDay(day, event) {
+            // หยุด Event Bubbling (ไม่ให้มันไปกดเพิ่มค่าหลังจากกดลบ)
+            if(event) event.stopPropagation();
+
+            if (savedData[day] && savedData[day] > 0) {
+                savedData[day]--;
+                if (savedData[day] === 0) {
+                    delete savedData[day];
+                }
+            }
+            
+            updateBoxVisual(day);
+            saveAndCalculate();
+        }
+
+        function updateBoxVisual(day) {
+            const count = savedData[day] || 0;
+            const box = document.getElementById(`day-${day}`);
+            const badge = document.getElementById(`badge-${day}`);
+            
+            if (count > 0) {
+                box.classList.add('active');
+                badge.innerText = `x${count}`;
             } else {
-                // เพิ่มเข้า
-                savedDays.push(day);
-                element.classList.add('checked');
+                box.classList.remove('active');
+            }
+        }
+
+        function saveAndCalculate() {
+            localStorage.setItem('savedDataMulti', JSON.stringify(savedData));
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            // วนลูป Object เพื่อคำนวณยอดรวม (วัน * จำนวนครั้ง)
+            for (const [day, count] of Object.entries(savedData)) {
+                total += parseInt(day) * count;
             }
 
-            // บันทึกลงเครื่อง
-            localStorage.setItem('savedDays365', JSON.stringify(savedDays));
-            
-            // คำนวณยอดรวมใหม่
-            const newTotal = savedDays.reduce((a, b) => a + b, 0);
-            updateDashboard(newTotal);
-        }
-
-        function updateDashboard(total) {
-            // เป้าหมายรวมคือ 66,795 (สูตร n*(n+1)/2)
+            // เป้าหมาย 1 รอบ
             const target = 66795;
             const percentage = (total / target) * 100;
 
             totalSavedEl.innerText = total.toLocaleString();
-            progressBar.style.width = percentage + '%';
-            progressText.innerText = `${percentage.toFixed(2)}% สำเร็จ (เหลืออีก ${(target - total).toLocaleString()} บาท)`;
+            
+            // จำกัดความกว้างหลอดไม่ให้เกิน 100% (เพื่อความสวยงาม) แต่ตัวเลขเกินได้
+            progressBar.style.width = (percentage > 100 ? 100 : percentage) + '%';
+            
+            // เปลี่ยนสีหลอดถ้าเกินเป้าหมาย
+            if (percentage >= 100) {
+                progressBar.style.backgroundColor = '#FFD700'; // สีทอง
+            } else {
+                progressBar.style.backgroundColor = '#4CAF50';
+            }
+
+            if (total < target) {
+                progressText.innerText = `${percentage.toFixed(2)}% สำเร็จ (ขาดอีก ${(target - total).toLocaleString()} บาท)`;
+            } else {
+                progressText.innerText = `🎉 สุดยอด! เกินเป้าหมายมา ${(total - target).toLocaleString()} บาท (${percentage.toFixed(0)}%)`;
+            }
         }
 
         function resetData() {
             if(confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลการออมทั้งหมด?')) {
-                localStorage.removeItem('savedDays365');
-                savedDays = [];
+                localStorage.removeItem('savedDataMulti');
+                savedData = {};
                 initGrid();
             }
         }
